@@ -260,3 +260,50 @@ arra_df %>% head(10) %>% kable()
 
 
 #######   3.5 Calcul d’indicateurs par type de culture
+
+# Récupération des libellés des codes culture
+culture_mapping <- s3read_using(
+  FUN = read.csv,
+  sep = ";",
+  object = "2023/sujet2/diffusion/ign/rpg/CULTURE.csv",
+  bucket = "projet-funathon",
+  opts = list("region" = "")
+)
+
+# On aggrège au niveau national par code culture et on calcule un écart
+# moyen du cumul par m2
+agg_arra_df <- arra_df %>%
+  group_by(code_cultu) %>%
+  summarise(ecart_volume_precip = sum(surface * arra), surface = sum(surface)) %>%
+  mutate(ecart_cumul_moyen = ecart_volume_precip / surface)
+
+# Récupération des 10 cultures avec une forte perte de précipitation
+agg_arra_df %>%
+  dplyr::left_join(culture_mapping, by = c("code_cultu" = "Code")) %>%
+  arrange(ecart_cumul_moyen) %>%
+  head(10) %>%
+  kable()
+
+
+# Frontières régionales de métropole
+region_sf <- st_read(
+  conn, query = "SELECT * FROM adminexpress.region"
+)
+region_sf <- region_sf %>% st_transform(
+  "EPSG:2154"
+)
+region_sf <- region_sf %>%
+  dplyr::filter(!(insee_reg %in% c("03", "04", "06", "01", "02", "01_SBSM")))
+
+# Parcelles de maïs doux
+query_mid <- "
+SELECT id_parcel, geom
+FROM rpg.parcelles
+WHERE code_cultu = 'MID'
+"
+cultures_mid <- st_read(conn, query = query_mid)
+ggplot() + 
+  geom_sf(data = region_sf) +
+  geom_sf(data = st_buffer(cultures_mid, 5000), fill = "#fca8ab", color = NA)
+
+###############  4  Évolution de la date théorique de récolte
