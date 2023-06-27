@@ -12,7 +12,6 @@ conn <- dbConnect(Postgres(),
                   dbname = "defaultdb",
                   port = 5432,
                   check_interrupts = TRUE)
-
 x<-48.01469669407841
 y<- -4.105676552817091
 rayon<-100000
